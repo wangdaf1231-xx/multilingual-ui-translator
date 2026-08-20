@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+.venv
+venv
+.git
+.pytest_cache
+*.xlsx
+data/*.db
+data/exports

@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>多语言UI翻译助手</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    :root {
+      --bg: #fbfbfa;
+      --canvas: #f7f6f3;
+      --surface: #ffffff;
+      --line: #eaeaea;
+      --text: #2f3437;
+      --muted: #787774;
+      --accent-bg: #e1f3fe;
+      --accent-text: #1f6c9f;
+      --ok: #346538;
+      --ok-bg: #edf3ec;
+      --danger: #9f2f2d;
+      --danger-bg: #fdebec;
+      --btn: #111111;
+      --user: #f7f6f3;
+      --bot: #ffffff;
+      --radius: 8px;
+      --z-menu: 20;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    html { color-scheme: light; }
+    body {
+      font-family: "Outfit", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    a.skip {
+      position: absolute; left: -999px; top: 8px; z-index: 50;
+      background: var(--btn); color: #fff; padding: 8px 12px; border-radius: 6px;
+    }
+    a.skip:focus { left: 8px; }
+    nav.nav-aside {
+      width: 220px; flex-shrink: 0; background: var(--canvas);
+      border-right: 1px solid var(--line);
+      padding: 18px 12px 16px;
+      display: flex; flex-direction: column; gap: 2px; min-height: 0;
+    }
+    .workspace { display: flex; align-items: center; gap: 10px; padding: 4px 8px 16px; font-size: 13px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.3; }
+    .ws-icon {
+      width: 28px; height: 28px; border-radius: 6px; background: var(--btn); color: #fff;
+      display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .ws-icon svg { width: 16px; height: 16px; display: block; }
+    .section-label {
+      color: var(--muted); font-size: 11px; font-weight: 500;
+      letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 10px 8px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 8px; color: var(--text); text-decoration: none;
+      padding: 8px 10px; border-radius: 6px; font-size: 14px; font-weight: 500;
+    }
+    .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .nav-item:hover { background: rgba(0,0,0,.04); }
+    .nav-item.on { background: var(--accent-bg); color: var(--accent-text); }
+    .nav-item:focus-visible, button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: 2px solid var(--btn); outline-offset: 2px;
+    }
+    aside.chat-rail {
+      display: none; width: 232px; flex-shrink: 0; background: var(--surface);
+      border-right: 1px solid var(--line); padding: 16px 12px;
+      flex-direction: column; gap: 10px; min-height: 0;
+    }
+    aside.chat-rail.on { display: flex; }
+    .new-conv { width: 100%; font-size: 13px; font-weight: 500; padding: 8px 12px; text-align: center; }
+    #conv-list { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+    .conv-item {
+      display: block; width: 100%; text-align: left; background: transparent; color: var(--text);
+      border-radius: 6px; padding: 8px 10px; font-size: 13px; font-weight: 400;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .conv-item:hover { background: rgba(0,0,0,.04); }
+    .conv-item.on { background: var(--canvas); font-weight: 500; }
+    .head-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+    main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--surface); }
+    header.bar {
+      padding: 20px 28px 16px; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+    }
+    header.bar h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.03em; margin: 0; text-wrap: balance; }
+    header.bar p { margin: 6px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 42em; }
+    .page { display: none; flex: 1; min-height: 0; flex-direction: column; }
+    .page.on { display: flex; }
+    button, select, input, textarea { font: inherit; color: var(--text); }
+    button {
+      background: var(--btn); color: #fff; border: 0; border-radius: 6px;
+      padding: 8px 12px; cursor: pointer; font-weight: 500;
+      transition: background .2s ease, transform .15s ease;
+    }
+    button:hover { background: #333; }
+    button:active { transform: scale(0.98); }
+    button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+    button.ghost:hover { background: var(--canvas); }
+    button.danger { background: var(--danger-bg); color: var(--danger); }
+    button.danger:hover { background: #f8d7d8; }
+    input, select, textarea {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;
+    }
+    .hint { color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .info {
+      background: var(--canvas); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 14px 16px; margin: 16px 28px 0; color: var(--muted); font-size: 13px; line-height: 1.6;
+    }
+    .grid { padding: 16px 28px 28px; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 20px 22px; cursor: pointer; transition: background .2s ease, box-shadow .2s ease;
+    }
+    .card:hover { background: var(--canvas); box-shadow: 0 2px 8px rgba(0,0,0,.04); }
+    .card h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; letter-spacing: -0.02em; }
+    .card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    #log { flex: 1; overflow: auto; padding: 20px 28px 8px; display: flex; flex-direction: column; gap: 14px; }
+    .msg { max-width: 880px; padding: 12px 14px; border-radius: var(--radius); line-height: 1.6; font-size: 14px; }
+    .msg.user { align-self: flex-end; background: var(--user); }
+    .msg.bot { align-self: flex-start; background: var(--bot); width: 100%; border: 1px solid var(--line); }
+    .msg table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+    .msg th, .msg td, table.data th, table.data td { border: 1px solid var(--line); padding: 7px 9px; text-align: left; }
+    .msg th, table.data th { background: var(--canvas); font-weight: 500; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    footer.chat { padding: 8px 28px 22px; }
+    .composer { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 10px; }
+    textarea#input { width: 100%; min-height: 72px; max-height: 160px; resize: none; overflow: hidden; border: 0; background: transparent; padding: 4px 2px 10px; outline: none; }
+    .composer-bar { display: flex; align-items: center; gap: 8px; }
+    .composer-bar .send {
+      margin-left: auto; width: 34px; height: 34px; padding: 0; border-radius: 6px;
+      display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .composer-bar .send svg { width: 16px; height: 16px; display: block; }
+    .composer-bar .send:disabled { background: var(--canvas); color: #b0aea8; cursor: not-allowed; transform: none; }
+    .pick-btn {
+      display: inline-flex; align-items: center; gap: 8px; background: var(--canvas); color: var(--text);
+      font-size: 13px; font-weight: 500; padding: 5px 10px 5px 8px; max-width: 220px; text-align: left;
+    }
+    .pick-btn svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--muted); }
+    .pick-btn:hover { background: #efeee9; }
+    .pick-copy { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; line-height: 1.2; }
+    .pick-kind { font-size: 10px; font-weight: 500; color: var(--muted); letter-spacing: 0.04em; }
+    .pick-name { font-size: 12px; font-weight: 500; color: var(--text); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pick-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(47,52,55,.28);
+      z-index: 40; align-items: center; justify-content: center; padding: 24px;
+    }
+    .pick-overlay.open { display: flex; }
+    .pick-dialog {
+      width: min(420px, 100%); background: var(--surface); border: 1px solid var(--line);
+      border-radius: 12px; padding: 20px 20px 16px;
+    }
+    .pick-dialog h2 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.02em; }
+    .pick-dialog p { margin: 6px 0 14px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .pick-list { display: flex; flex-direction: column; gap: 4px; max-height: 280px; overflow: auto; }
+    .pick-list button { display: block; width: 100%; text-align: left; background: transparent; color: var(--text); padding: 10px 12px; font-size: 14px; border-radius: 6px; }
+    .pick-list button:hover { background: var(--canvas); }
+    .pick-list button.on { background: var(--accent-bg); color: var(--accent-text); }
+    .pick-dialog .pick-cancel { margin-top: 12px; }
+    .toolbar { display: flex; gap: 8px; align-items: center; padding: 12px 28px; flex-wrap: wrap; }
+    table.data { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+    .table-wrap { overflow: auto; padding: 0 28px 28px; }
+    form.edit { display: flex; flex-direction: column; gap: 10px; padding: 16px 28px 32px; overflow: auto; }
+    form.edit label { font-size: 12px; color: var(--muted); font-weight: 500; }
+    .checks { display: flex; flex-wrap: wrap; gap: 12px; font-size: 13px; }
+    .statline { color: var(--muted); font-size: 13px; }
+    .statline b { color: var(--ok); font-weight: 600; }
+    kbd { font-family: ui-monospace, "SF Mono", "JetBrains Mono", monospace; font-size: 11px; border: 1px solid var(--line); border-radius: 4px; background: var(--canvas); padding: 1px 5px; }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#log">跳到对话内容</a>
+  <nav class="nav-aside" aria-label="工作台">
+    <div class="workspace">
+      <span class="ws-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m5 8 6 6" /><path d="m4 14 6-6 2-3" /><path d="M2 5h12" /><path d="M7 2h1" />
+          <path d="m22 22-5-10-5 10" /><path d="M14 18h6" />
+        </svg>
+      </span>
+      多语言UI翻译助手
+    </div>
+    <div class="section-label">工作台</div>
+    <a class="nav-item on" href="#chat" data-nav="chat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      AI 对话
+    </a>
+    <a class="nav-item" href="#kb" data-nav="kb">知识库</a>
+    <a class="nav-item" href="#skills" data-nav="skills">技能中心</a>
+  </nav>
+  <aside class="chat-rail on" id="chat-rail">
+    <button type="button" class="new-conv" onclick="newConversation()">+ 新建对话</button>
+    <div id="conv-list"></div>
+  </aside>
+  <main>
+    <section id="page-chat" class="page on">
+      <header class="bar">
+        <div>
+          <h1>翻译对话</h1>
+          <p>粘贴中文界面文案，一次得到英、法、德、意、波、西、葡。已收录的沿用历史译文，未收录的由 AI 新译。</p>
+        </div>
+      </header>
+      <div id="log"></div>
+      <footer class="chat">
+        <div class="composer" id="composer">
+          <textarea id="input" rows="3" placeholder="粘贴要翻译的中文"></textarea>
+          <div class="composer-bar">
+            <button type="button" class="pick-btn" onclick="togglePicker()" title="选择 UI 类型">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="8" width="18" height="8" rx="2" /><path d="M7 12h4" />
+              </svg>
+              <span class="pick-copy">
+                <span class="pick-kind">UI类型</span>
+                <span class="pick-name" id="ui-pick-name">不限</span>
+              </span>
+            </button>
+            <button type="button" class="send" id="send" disabled aria-label="发送">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 19V5" /><path d="M5 12l7-7 7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="hint" style="margin-top:8px">左下角可选 UI 类型来限制按钮、标题长度；不选则按正常翻译。需要表格时同一条消息写 excel。<kbd>Ctrl</kbd>+<kbd>Enter</kbd> 发送。</div>
+      </footer>
+    </section>
+
+    <section id="page-kb" class="page">
+      <header class="bar">
+        <div>
+          <h1>知识库</h1>
+          <p>统一存放已确认的中文和七国译文。同一句中文下次会直接复用，避免不同人翻成不同词。</p>
+        </div>
+        <button onclick="openKbNew()">+ 新建知识库</button>
+      </header>
+      <div class="info">每本知识库包含「术语」（必须统一的短词）和「翻译记忆」（完整句子或界面文案）。可从历史 Excel 导入，也可以导出给研发使用。</div>
+      <div id="kb-list" class="grid"></div>
+    </section>
+
+    <section id="page-kb-detail" class="page">
+      <header class="bar">
+        <div>
+          <h1 id="kb-detail-title">知识库</h1>
+          <p class="statline">复用率 <b id="hitRate">—</b>（对话中直接沿用历史译文的比例）· 术语 <span id="gCount">0</span> · 翻译记忆 <span id="tCount">0</span></p>
+        </div>
+        <div class="actions">
+          <button class="ghost" onclick="go('#kb')">返回</button>
+          <button class="ghost" onclick="exportKb()">导出 Excel</button>
+          <label class="ghost" style="padding:8px 12px;border-radius:6px;border:1px solid var(--line);cursor:pointer;font-size:14px;font-weight:500">导入 Excel<input type="file" id="kb-file" accept=".xlsx" hidden></label>
+          <button onclick="openEntryNew()">+ 新增词条</button>
+        </div>
+      </header>
+      <div class="toolbar">
+        <select id="kb-table">
+          <option value="glossary">术语库</option>
+          <option value="tm">翻译记忆</option>
+        </select>
+        <input id="kb-q" placeholder="按中文搜索" />
+        <button class="ghost" onclick="loadEntries()">搜索</button>
+        <button class="ghost" onclick="editKbMeta()">编辑信息</button>
+      </div>
+      <div class="table-wrap"><table class="data" id="kb-table-el"></table></div>
+    </section>
+
+    <section id="page-skills" class="page">
+      <header class="bar">
+        <div>
+          <h1>技能中心</h1>
+          <p>配置翻译时怎么工作：用哪套说明、查哪本知识库、是否允许写入和导出。对话框里切换技能即可换一套规则。</p>
+        </div>
+        <button onclick="openSkillNew()">+ 新建技能</button>
+      </header>
+      <div class="info">先写任务说明，再勾选知识库和能力，保存后即可在对话中选用。适合给不同产品线或不同文案风格准备多套技能。</div>
+      <div id="skill-list" class="grid"></div>
+    </section>
+
+    <section id="page-skill-edit" class="page">
+      <header class="bar">
+        <div><h1 id="skill-edit-title">编辑技能</h1><p>保存后，可在对话框里切换到该技能。</p></div>
+        <div class="actions">
+          <button class="ghost" onclick="go('#skills')">返回</button>
+          <button class="danger" id="skill-del" onclick="removeSkill()">删除</button>
+          <button onclick="saveSkillForm()">保存</button>
+        </div>
+      </header>
+      <form class="edit" id="skill-form" onsubmit="return false">
+        <label>技能编号</label><input id="s-id" placeholder="例如 i18n-marketing" />
+        <label>名称</label><input id="s-name" placeholder="例如 营销活动翻译" />
+        <label>这套技能做什么</label><input id="s-desc" placeholder="一两句话说明适用场景" />
+        <label>使用的知识库</label><div id="s-kbs" class="checks"></div>
+        <label>具备的能力</label>
+        <div class="checks">
+          <label><input type="checkbox" value="lookup" class="s-tool" checked /> 优先复用知识库译文</label>
+          <label><input type="checkbox" value="translate" class="s-tool" checked /> 对未收录文案做 AI 翻译</label>
+          <label><input type="checkbox" value="confirm_write" class="s-tool" checked /> 确认后写入知识库</label>
+          <label><input type="checkbox" value="export_xlsx" class="s-tool" checked /> 导出 Excel 给研发</label>
+        </div>
+        <label>任务说明（告诉 AI 如何翻译）</label>
+        <textarea id="s-prompt" style="min-height:280px"></textarea>
+      </form>
+    </section>
+  </main>
+  <script>
+    const WELCOME = "发送中文界面文案即可开始。库里已有的会沿用历史译文；没有的由 AI 新译，点「确认入库」后，下次所有人都会用同一套译法。需要控长度时写「UI类型：按钮」。";
+    const MAX_CONVS = 10;
+    const CONV_KEY = "conversations_v1";
+    function newSid() {
+      return (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + "-" + Math.random().toString(16).slice(2));
+    }
+    function tabTitle(text) {
+      const compact = String(text || "").replace(/[\s\n\r]/g, "");
+      return compact.slice(0, 10) || "新对话";
+    }
+    function loadConvs() {
+      try { return JSON.parse(localStorage.getItem(CONV_KEY) || "[]"); } catch { return []; }
+    }
+    function saveConvs() { localStorage.setItem(CONV_KEY, JSON.stringify(convs)); }
+    let convs = loadConvs();
+    let sid = localStorage.getItem("sid") || newSid();
+    if (!convs.length) {
+      convs = [{ id: sid, title: "新对话", skillId: "", kbId: "", messages: [{ role: "bot", html: WELCOME }] }];
+      saveConvs();
+    }
+    if (!convs.some(c => c.id === sid)) sid = convs[0].id;
+    localStorage.setItem("sid", sid);
+    marked.setOptions({ breaks: true });
+    let currentKb = "pitpat-dict";
+    let skillNew = false;
+    let kbCache = [];
+    let skillCache = [];
+    const UI_TYPES = ["按钮","Tab","icon","功能入口","页面标题","卡片标题","数据标签","状态标签","Toast","错误提示","占位符","弹窗","说明","健康建议","法律协议"];
+    let chatKbId = "";
+    let chatSkillId = "";
+    let chatUiType = "";
+
+    function currentConv() { return convs.find(c => c.id === sid) || convs[0]; }
+    function persistCurrentMessages() {
+      const c = currentConv();
+      if (!c) return;
+      c.skillId = chatSkillId;
+      c.kbId = chatKbId;
+      c.uiType = chatUiType;
+      saveConvs();
+    }
+    function renderConvList() {
+      const box = document.getElementById("conv-list");
+      box.innerHTML = "";
+      convs.slice(0, MAX_CONVS).forEach(c => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "conv-item" + (c.id === sid ? " on" : "");
+        b.textContent = c.title || "新对话";
+        b.title = c.title || "新对话";
+        b.onclick = () => openConversation(c.id);
+        box.appendChild(b);
+      });
+    }
+    function renderLog() {
+      const logEl = document.getElementById("log");
+      logEl.innerHTML = "";
+      const c = currentConv();
+      (c.messages || []).forEach(m => addMsg(m.role, m.html, m.extras, false));
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+    function syncSendBtn() {
+      document.getElementById("send").disabled = !document.getElementById("input").value.trim();
+    }
+    function growInput() {
+      const el = document.getElementById("input");
+      el.style.height = "auto";
+      el.style.height = Math.min(el.scrollHeight, 160) + "px";
+      syncSendBtn();
+    }
+
+    function go(hash) { location.hash = hash; }
+    function page(id) {
+      document.querySelectorAll(".page").forEach(p => p.classList.remove("on"));
+      document.getElementById("page-" + id).classList.add("on");
+      const navKey = id.startsWith("kb") ? "kb" : id.startsWith("skill") ? "skills" : "chat";
+      document.querySelectorAll(".nav-item[data-nav]").forEach(n => n.classList.toggle("on", n.dataset.nav === navKey));
+      document.getElementById("chat-rail").classList.toggle("on", navKey === "chat");
+      renderConvList();
+    }
+
+    async function route() {
+      const h = (location.hash || "#chat").slice(1);
+      const [name, id] = h.split("/");
+      if (name === "skills" && id === "new") { page("skill-edit"); await fillSkillForm(null); return; }
+      if (name === "skills" && id) { page("skill-edit"); await fillSkillForm(id); return; }
+      if (name === "skills") { page("skills"); await loadSkills(); return; }
+      if (name === "kb" && id === "new") { openKbNew(); go("#kb"); return; }
+      if (name === "kb" && id) { currentKb = id; page("kb-detail"); await loadKbDetail(); return; }
+      if (name === "kb") { page("kb"); await loadKbs(); return; }
+      page("chat");
+      await refreshChatPickers();
+      renderConvList();
+      renderLog();
+    }
+
+    window.addEventListener("hashchange", route);
+
+    function newConversation() {
+      persistCurrentMessages();
+      sid = newSid();
+      localStorage.setItem("sid", sid);
+      convs.unshift({ id: sid, title: "新对话", skillId: chatSkillId, kbId: chatKbId, uiType: chatUiType, messages: [{ role: "bot", html: WELCOME }] });
+      if (convs.length > MAX_CONVS) convs = convs.slice(0, MAX_CONVS);
+      saveConvs();
+      document.getElementById("input").value = "";
+      growInput();
+      renderConvList();
+      renderLog();
+      go("#chat");
+    }
+    function openConversation(id) {
+      persistCurrentMessages();
+      const c = convs.find(x => x.id === id);
+      if (!c) return;
+      sid = c.id;
+      localStorage.setItem("sid", sid);
+      if (c.skillId) chatSkillId = c.skillId;
+      if (c.kbId) chatKbId = c.kbId;
+      chatUiType = c.uiType || "";
+      updatePickerLabels();
+      renderConvList();
+      renderLog();
+      go("#chat");
+      refreshChatPickers();
+    }
+    function addMsg(role, html, extras, persist) {
+      const logEl = document.getElementById("log");
+      const div = document.createElement("div");
+      div.className = "msg " + role;
+      div.innerHTML = html;
+      const bar = extras ? actionBar(extras) : null;
+      if (bar) div.appendChild(bar);
+      logEl.appendChild(div);
+      logEl.scrollTop = logEl.scrollHeight;
+      if (persist !== false) {
+        const c = currentConv();
+        c.messages.push({ role, html, extras: extras || null });
+        saveConvs();
+      }
+    }
+    function btn(text, fn, ghost) {
+      const b = document.createElement("button");
+      b.textContent = text;
+      if (ghost) b.className = "ghost";
+      b.onclick = fn;
+      return b;
+    }
+    function actionBar(data) {
+      const wrap = document.createElement("div");
+      wrap.className = "actions";
+      if (data.pending) {
+        wrap.appendChild(btn("确认入库", () => send("确认入库", "confirm")));
+        wrap.appendChild(btn("本次仅使用、不入库", () => send("本次不入库", "reject"), true));
+      }
+      if (data.needs_overwrite) wrap.appendChild(btn("确认覆盖", () => send("确认覆盖", "overwrite")));
+      if (data.excel_url) {
+        const a = document.createElement("a");
+        a.href = data.excel_url; a.textContent = "下载 Excel"; a.style.color = "var(--accent-text)";
+        wrap.appendChild(a);
+      }
+      return wrap.childNodes.length ? wrap : null;
+    }
+    function closePickers() {
+      document.getElementById("pick-overlay").classList.remove("open");
+    }
+    function togglePicker() {
+      const overlay = document.getElementById("pick-overlay");
+      if (overlay.classList.contains("open")) {
+        closePickers();
+        return;
+      }
+      const list = document.getElementById("pick-list");
+      list.innerHTML = "";
+      ["", ...UI_TYPES].forEach(t => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = t || "不限";
+        if ((t || "") === chatUiType) b.className = "on";
+        b.onclick = () => {
+          chatUiType = t;
+          persistCurrentMessages();
+          updatePickerLabels();
+          closePickers();
+        };
+        list.appendChild(b);
+      });
+      overlay.classList.add("open");
+    }
+    function updatePickerLabels() {
+      document.getElementById("ui-pick-name").textContent = chatUiType || "不限";
+    }
+    async function refreshChatPickers() {
+      const r = await fetch("/api/meta");
+      const m = await r.json();
+      skillCache = m.skills || [];
+      kbCache = m.knowledge_bases || [];
+      const c = currentConv();
+      if (!chatSkillId) chatSkillId = c.skillId || m.default_skill || (skillCache[0] && skillCache[0].id) || "";
+      if (!chatKbId) {
+        const skill = skillCache.find(s => s.id === chatSkillId);
+        chatKbId = c.kbId || m.default_kb || (skill && skill.kb_ids && skill.kb_ids[0]) || (kbCache[0] && kbCache[0].id) || "";
+      }
+      updatePickerLabels();
+    }
+    async function send(text, action) {
+      const inputEl = document.getElementById("input");
+      let message = text ?? inputEl.value.trim();
+      if (!message && !action) return;
+      closePickers();
+      if (!action) {
+        let payload = message;
+        if (chatUiType && !/^UI类型\s*[：:]/m.test(message)) {
+          payload = "UI类型：" + chatUiType + "\n" + message;
+        }
+        addMsg("user", marked.parse(payload.replace(/</g, "&lt;")));
+        const c = currentConv();
+        if (!c.title || c.title === "新对话") {
+          c.title = tabTitle(message);
+        }
+        convs = [c, ...convs.filter(x => x.id !== sid)].slice(0, MAX_CONVS);
+        renderConvList();
+        saveConvs();
+        inputEl.value = "";
+        growInput();
+        message = payload;
+      }
+      const r = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sid, message, action: action || "", skill_id: chatSkillId, kb_id: chatKbId })
+      });
+      const data = await r.json();
+      if (!r.ok) { addMsg("bot", "请求失败：" + (data.detail || r.status)); return; }
+      const extras = (data.pending || data.needs_overwrite || data.excel_url)
+        ? { pending: data.pending, needs_overwrite: data.needs_overwrite, excel_url: data.excel_url }
+        : null;
+      addMsg("bot", marked.parse(data.reply_markdown || ""), extras);
+    }
+    document.getElementById("send").onclick = () => send();
+    document.getElementById("input").addEventListener("keydown", e => {
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        if (!document.getElementById("send").disabled) send();
+      }
+    });
+    document.getElementById("input").addEventListener("input", growInput);
+    document.getElementById("pick-overlay").addEventListener("click", e => {
+      if (e.target.id === "pick-overlay") closePickers();
+    });
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape") closePickers();
+    });
+
+    async function loadSkills() {
+      const r = await fetch("/api/skills");
+      const data = await r.json();
+      const box = document.getElementById("skill-list");
+      box.innerHTML = "";
+      (data.items || []).forEach(s => {
+        const d = document.createElement("div");
+        d.className = "card";
+        d.innerHTML = `<h3>${s.name}</h3><p>${s.description || s.id}</p>`;
+        d.onclick = () => go("#skills/" + s.id);
+        box.appendChild(d);
+      });
+    }
+    async function fillSkillForm(id) {
+      skillNew = !id;
+      document.getElementById("skill-edit-title").textContent = skillNew ? "新建技能" : "编辑技能";
+      document.getElementById("skill-del").style.display = skillNew || id === "ui-i18n" ? "none" : "inline-block";
+      document.getElementById("s-id").disabled = !skillNew;
+      const kbs = await (await fetch("/api/kbs")).json();
+      kbCache = kbs.items || [];
+      const kbBox = document.getElementById("s-kbs");
+      kbBox.innerHTML = kbCache.map(k => `<label><input type="checkbox" class="s-kb" value="${k.id}" /> ${k.name}</label>`).join("");
+      let s = { id: "", name: "", description: "", system_prompt: "", tools: ["lookup","translate","confirm_write","export_xlsx"], kb_ids: ["pitpat-dict"] };
+      if (id) s = await (await fetch("/api/skills/" + id)).json();
+      document.getElementById("s-id").value = s.id || "";
+      document.getElementById("s-name").value = s.name || "";
+      document.getElementById("s-desc").value = s.description || "";
+      document.getElementById("s-prompt").value = s.system_prompt || "";
+      document.querySelectorAll(".s-tool").forEach(c => c.checked = (s.tools || []).includes(c.value));
+      document.querySelectorAll(".s-kb").forEach(c => c.checked = (s.kb_ids || []).includes(c.value));
+    }
+    function openSkillNew() { go("#skills/new"); }
+    async function saveSkillForm() {
+      const body = {
+        id: document.getElementById("s-id").value.trim(),
+        name: document.getElementById("s-name").value.trim(),
+        description: document.getElementById("s-desc").value.trim(),
+        system_prompt: document.getElementById("s-prompt").value,
+        tools: [...document.querySelectorAll(".s-tool:checked")].map(c => c.value),
+        kb_ids: [...document.querySelectorAll(".s-kb:checked")].map(c => c.value)
+      };
+      const url = skillNew ? "/api/skills" : "/api/skills/" + body.id;
+      const r = await fetch(url, { method: skillNew ? "POST" : "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const data = await r.json();
+      if (!r.ok) { alert(data.detail || "保存失败"); return; }
+      go("#skills/" + data.id);
+      alert("已保存");
+    }
+    async function removeSkill() {
+      const id = document.getElementById("s-id").value;
+      if (!confirm("删除技能 " + id + "？")) return;
+      const r = await fetch("/api/skills/" + id, { method: "DELETE" });
+      if (!r.ok) { alert((await r.json()).detail); return; }
+      go("#skills");
+    }
+
+    async function loadKbs() {
+      const r = await fetch("/api/kbs");
+      const data = await r.json();
+      const box = document.getElementById("kb-list");
+      box.innerHTML = "";
+      (data.items || []).forEach(k => {
+        const d = document.createElement("div");
+        d.className = "card";
+        d.innerHTML = `<h3>${k.name}</h3><p>${k.description || k.id}<br>术语 ${k.glossary_count} · 记忆 ${k.tm_count}</p>`;
+        d.onclick = () => go("#kb/" + k.id);
+        box.appendChild(d);
+      });
+    }
+    function openKbNew() {
+      const id = prompt("知识库 ID（英文/数字，如 marketing）");
+      if (!id) return;
+      const name = prompt("显示名称", id);
+      if (!name) return;
+      fetch("/api/kbs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, name, description: "" }) })
+        .then(async r => { const d = await r.json(); if (!r.ok) alert(d.detail); else go("#kb/" + d.id); });
+    }
+    async function editKbMeta() {
+      const name = prompt("显示名称");
+      if (!name) return;
+      const description = prompt("说明", "") || "";
+      const r = await fetch("/api/kbs/" + currentKb, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, description }) });
+      if (!r.ok) alert((await r.json()).detail); else loadKbDetail();
+    }
+    async function loadKbDetail() {
+      const meta = await (await fetch("/api/meta")).json();
+      const kb = (meta.knowledge_bases || []).find(x => x.id === currentKb);
+      document.getElementById("kb-detail-title").textContent = kb ? kb.name : currentKb;
+      const st = meta.stats || {};
+      document.getElementById("hitRate").textContent = st.total_lookups ? Math.round(st.hit_rate * 100) + "%" : "—";
+      document.getElementById("gCount").textContent = kb ? kb.glossary_count : 0;
+      document.getElementById("tCount").textContent = kb ? kb.tm_count : 0;
+      await loadEntries();
+    }
+    async function loadEntries() {
+      const table = document.getElementById("kb-table").value;
+      const q = document.getElementById("kb-q").value;
+      const r = await fetch(`/api/kbs/${currentKb}/entries?table=${table}&q=${encodeURIComponent(q)}&limit=80`);
+      const data = await r.json();
+      const langs = ["en","fr","de","it","pl","es","pt"];
+      const labels = ["中文","英","法","德","意","波","西","葡",""];
+      let html = "<tr>" + labels.map(x => `<th>${x}</th>`).join("") + "</tr>";
+      (data.items || []).forEach(it => {
+        html += `<tr><td>${it.zh}</td>` + langs.map(k => `<td>${(it[k]||"").slice(0,40)}</td>`).join("") +
+          `<td><button class="ghost" onclick='editEntry(${JSON.stringify(it).replace(/'/g, "&#39;")})'>改</button> <button class="danger" onclick='delEntry(${JSON.stringify(it.zh)})'>删</button></td></tr>`;
+      });
+      document.getElementById("kb-table-el").innerHTML = html || "<tr><td>暂无</td></tr>";
+    }
+    function openEntryNew() {
+      const zh = prompt("中文");
+      if (!zh) return;
+      const en = prompt("英文", "") || "";
+      saveEntry({ zh, en, overwrite: true });
+    }
+    function editEntry(it) {
+      const en = prompt("英文", it.en || "");
+      if (en === null) return;
+      saveEntry({ ...it, en, overwrite: true });
+    }
+    async function saveEntry(it) {
+      const table = document.getElementById("kb-table").value;
+      const r = await fetch(`/api/kbs/${currentKb}/entries/${table}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...it, overwrite: true })
+      });
+      if (!r.ok) alert((await r.json()).detail); else loadKbDetail();
+    }
+    async function delEntry(zh) {
+      if (!confirm("删除「" + zh + "」？")) return;
+      const table = document.getElementById("kb-table").value;
+      await fetch(`/api/kbs/${currentKb}/entries/${table}?zh=${encodeURIComponent(zh)}`, { method: "DELETE" });
+      loadKbDetail();
+    }
+    function exportKb() { location.href = "/api/kbs/" + currentKb + "/export"; }
+    document.getElementById("kb-file").onchange = async (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      const fd = new FormData(); fd.append("file", f);
+      const r = await fetch("/api/kbs/" + currentKb + "/import", { method: "POST", body: fd });
+      const d = await r.json();
+      alert("导入术语 " + (d.glossary||0) + " · 记忆 " + (d.tm||0));
+      e.target.value = "";
+      loadKbDetail();
+    };
+
+    renderConvList();
+    route();
+  </script>
+  <div id="pick-overlay" class="pick-overlay" role="presentation">
+    <div class="pick-dialog" role="dialog" aria-modal="true" aria-labelledby="pick-title">
+      <h2 id="pick-title">选择 UI 类型</h2>
+      <p id="pick-desc">按界面控件限长。不限则按完整句子翻译，不压字数。</p>
+      <div id="pick-list" class="pick-list"></div>
+      <button type="button" class="ghost pick-cancel" onclick="closePickers()">取消</button>
+    </div>
+  </div>
+</body>
+</html>
