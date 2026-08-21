@@ -11,6 +11,7 @@ from app.constants import HIT_FAIL, HIT_GLOSSARY, HIT_NEW, HIT_TM, KB_ID, LANGS,
 from app.kb.export_xlsx import export_batch
 from app.kb.normalize import cell_str, is_empty_trans
 from app.kb.store import SessionState, Store
+from app.kb.terms import extract_glossary_terms
 from app.skills_io import get_skill, list_skills
 
 SENTENCE_PUNCT = re.compile(r"[。！？\n]")
@@ -99,6 +100,7 @@ class AgentLoop:
         pending: list[dict] = []
         locked: list[dict] = []
         need_model: list[dict] = []
+        glossary_entries = self.store.list_glossary_entries(kb_id)
 
         for line in parsed.lines:
             hit = self.store.lookup(line.zh, kb_id=kb_id)
@@ -128,6 +130,11 @@ class AgentLoop:
                     }
                 )
                 continue
+            terms = extract_glossary_terms(line.zh, glossary_entries)
+            term_rows = [_row(t["zh"], t["langs"]) for t in terms]
+            for tr in term_rows:
+                if not any(x.get("zh") == tr["zh"] for x in locked):
+                    locked.append(tr)
             need_model.append(
                 {
                     "zh": line.zh,
@@ -135,6 +142,7 @@ class AgentLoop:
                     "need": list(LANGS),
                     "base": {k: "" for k in LANGS},
                     "hit_source": HIT_NEW,
+                    "terms": term_rows,
                 }
             )
 
@@ -170,6 +178,7 @@ class AgentLoop:
                         "complete": False,
                         "missing": list(LANGS),
                         "fills": {},
+                        "terms": job.get("terms") or [],
                         "error": err or "DeepSeek 未返回译文，不入库。",
                     }
                 )
@@ -192,6 +201,7 @@ class AgentLoop:
                     "complete": complete,
                     "missing": [k for k in LANGS if is_empty_trans(langs.get(k, ""))],
                     "fills": fills,
+                    "terms": job.get("terms") or [],
                 }
             )
             self.store.log_request(

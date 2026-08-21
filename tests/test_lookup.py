@@ -197,6 +197,102 @@ def test_should_write_glossary():
     assert not should_write_glossary("这是一句很长的说明文案", langs)
 
 
+def _seven(en: str) -> dict[str, str]:
+    return {k: en for k in ("en", "fr", "de", "it", "pl", "es", "pt")}
+
+
+def test_extract_glossary_in_new_sentence():
+    from app.kb.terms import extract_glossary_terms
+
+    entries = [
+        {"zh": "步频", "langs": _seven("Cadence")},
+        {"zh": "设置", "langs": _seven("Settings")},
+        {"zh": "请设置你的步频", "langs": _seven("Set your cadence")},
+    ]
+    got = extract_glossary_terms("请设置你的步频", entries)
+    assert [x["zh"] for x in got] == ["设置", "步频"]
+    assert got[0]["langs"]["en"] == "Settings"
+    assert got[1]["langs"]["en"] == "Cadence"
+
+
+def test_extract_longest_term_wins():
+    from app.kb.terms import extract_glossary_terms
+
+    entries = [
+        {"zh": "会员", "langs": _seven("Member")},
+        {"zh": "会员中心", "langs": _seven("Membership")},
+    ]
+    got = extract_glossary_terms("打开会员中心", entries)
+    assert [x["zh"] for x in got] == ["会员中心"]
+
+
+def test_extract_ignores_incomplete_and_does_not_use_tm_shape():
+    from app.kb.terms import extract_glossary_terms
+
+    entries = [
+        {"zh": "步频", "langs": {"en": "Cadence", "fr": "", "de": "", "it": "", "pl": "", "es": "", "pt": ""}},
+        {"zh": "划行", "langs": _seven("Rowing")},
+    ]
+    assert extract_glossary_terms("请设置你的步频", entries) == []
+    got = extract_glossary_terms("今天室内划行很累", entries)
+    assert [x["zh"] for x in got] == ["划行"]
+
+
+def test_new_sentence_locks_in_sentence_glossary(store, monkeypatch):
+    from app.agent import loop as loop_mod
+
+    store.bulk_insert(
+        "glossary",
+        [
+            {"zh": "步频", **_seven("Cadence")},
+            {"zh": "设置", **_seven("Settings")},
+        ],
+    )
+    captured: dict = {}
+
+    def fake_translate(items, locked, skill_id="ui-i18n"):
+        captured["items"] = items
+        captured["locked"] = locked
+        out = {}
+        for it in items:
+            out[it["zh"]] = _seven("Please set your cadence")
+        return out, None
+
+    monkeypatch.setattr(loop_mod, "translate_with_deepseek", fake_translate)
+    agent = AgentLoop(store)
+    r = agent.handle("s-terms", "请设置你的步频")
+    terms = captured["items"][0]["terms"]
+    assert [t["zh"] for t in terms] == ["设置", "步频"]
+    assert any(t["zh"] == "步频" and t["en"] == "Cadence" for t in captured["locked"])
+    assert all(t["zh"] != "请设置你的步频" for t in captured["locked"])
+    assert "室内划行" not in [t["zh"] for t in terms]
+    md = r["reply_markdown"]
+    assert "整句未命中" in md
+    assert "步频=Cadence" in md
+    assert "设置=Settings" in md
+
+
+def test_tm_exact_still_not_sliced(store, monkeypatch):
+    from app.agent import loop as loop_mod
+
+    called = {"n": 0}
+
+    def fake_translate(items, locked, skill_id="ui-i18n"):
+        called["n"] += 1
+        return {}, None
+
+    monkeypatch.setattr(loop_mod, "translate_with_deepseek", fake_translate)
+    agent = AgentLoop(store)
+    r = agent.handle("s-tm", "室内划行")
+    assert called["n"] == 0
+    assert r["checks"][0]["hit_source"] == "tm"
+    r2 = agent.handle("s-tm2", "今天室内划行很累")
+    assert called["n"] == 1
+    zhs = [t["zh"] for t in (r2["checks"][0].get("terms") or [])]
+    assert "室内划行" not in zhs
+    assert "划行" in zhs
+
+
 @pytest.mark.skipif(not XLSX.exists(), reason="翻译库.xlsx missing")
 def test_real_xlsx_golden(tmp_path):
     from app.kb.import_xlsx import import_xlsx

@@ -43,13 +43,19 @@ def export_batch(items: list[dict], checks: list[dict]) -> Path:
         ws.column_dimensions[get_column_letter(i)].width = w
 
     ws2 = wb.create_sheet("翻译库检查")
-    ws2.append(["中文", "命中来源", "是否七国齐全", "缺少语言", "补译内容"])
+    ws2.append(["中文", "命中来源", "是否七国齐全", "缺少语言", "补译内容", "句中术语"])
     for c in checks:
         source = SOURCE_LABEL.get(c.get("hit_source", ""), c.get("hit_source", ""))
         missing = c.get("missing") or []
         missing_labels = "、".join(LANG_LABEL[k] for k in missing if k in LANG_LABEL)
         fills = c.get("fills") or {}
         fill_txt = "；".join(f"{LANG_LABEL.get(k, k)}={v}" for k, v in fills.items() if v)
+        terms = c.get("terms") or []
+        term_txt = "；".join(
+            f"{cell_str(t.get('zh'))}={cell_str(t.get('en'))}"
+            for t in terms
+            if t.get("zh")
+        )
         ws2.append(
             [
                 c.get("zh", ""),
@@ -57,10 +63,11 @@ def export_batch(items: list[dict], checks: list[dict]) -> Path:
                 "是" if c.get("complete") else "否",
                 missing_labels,
                 fill_txt,
+                term_txt,
             ]
         )
-    _style_header(ws2, 5)
-    for i, w in enumerate([36, 16, 14, 22, 40], 1):
+    _style_header(ws2, 6)
+    for i, w in enumerate([36, 16, 14, 22, 40, 40], 1):
         ws2.column_dimensions[get_column_letter(i)].width = w
 
     wb.save(path)

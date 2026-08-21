@@ -285,6 +285,12 @@ class Store:
             (kb_id, norm),
         ).fetchone()
 
+    def list_glossary_entries(self, kb_id: str = "pitpat-dict") -> list[dict[str, Any]]:
+        rows = self._conn.execute(
+            "SELECT * FROM glossary WHERE kb_id = ?", (kb_id,)
+        ).fetchall()
+        return [{"zh": cell_str(row["zh"]), "langs": _langs_from_row(row)} for row in rows]
+
     def lookup(self, zh: str, kb_id: str = "pitpat-dict") -> Entry | None:
         raw = cell_str(zh)
         if not raw:
