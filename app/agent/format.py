@@ -41,8 +41,30 @@ def check_report(checks: list[dict]) -> str:
         elif src == "fail":
             lines.append(f"{i}. 【{zh}】DeepSeek 调用失败，未生成新译，不入库。")
         else:
-            lines.append(f"{i}. 【{zh}】未命中术语库 / 翻译记忆，七国按新译。")
+            term_txt = _term_lock_text(c.get("terms") or [])
+            if term_txt:
+                lines.append(
+                    f"{i}. 【{zh}】整句未命中术语库 / 翻译记忆，七国按新译。{term_txt}"
+                )
+            else:
+                lines.append(f"{i}. 【{zh}】未命中术语库 / 翻译记忆，七国按新译。")
     return "\n".join(lines)
+
+
+def _term_lock_text(terms: list[dict]) -> str:
+    if not terms:
+        return ""
+    bits = []
+    for t in terms:
+        zh = cell_str(t.get("zh"))
+        en = cell_str(t.get("en"))
+        if zh and en:
+            bits.append(f"{zh}={en}")
+        elif zh:
+            bits.append(zh)
+    if not bits:
+        return ""
+    return "句中术语（七国库译原样）：" + "；".join(bits) + "。"
 
 
 def pending_block(pending: list[dict]) -> str:

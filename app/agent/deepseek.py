@@ -46,7 +46,7 @@ def list_skills() -> list[dict]:
 
 def _user_payload(items: list[dict], locked_terms: list[dict]) -> str:
     payload = {
-        "task": "只翻译 items 里的中文。已有语言不要改。空字符串的语言必须补译。",
+        "task": "只翻译 items 里的中文。已有语言不要改。空字符串的语言必须补译。翻译记忆只整句精确匹配；句中 terms 来自术语库，七国译法必须原样嵌入。",
         "locked_terms": [
             {"zh": t["zh"], **{k: t.get(k, "") for k in LANGS}} for t in locked_terms
         ],
@@ -55,6 +55,10 @@ def _user_payload(items: list[dict], locked_terms: list[dict]) -> str:
                 "zh": it["zh"],
                 "ui_type": it.get("ui_type") or "正常翻译",
                 "need": it.get("need") or list(LANGS),
+                "terms": [
+                    {"zh": t["zh"], **{k: t.get(k, "") for k in LANGS}}
+                    for t in (it.get("terms") or [])
+                ],
             }
             for it in items
         ],
