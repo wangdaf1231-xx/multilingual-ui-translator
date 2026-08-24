@@ -11,7 +11,13 @@ load_dotenv(ROOT / ".env")
 
 DATA_DIR = Path(os.getenv("DATA_DIR", ROOT / "data"))
 EXPORT_DIR = DATA_DIR / "exports"
-XLSX_PATH = Path(os.getenv("TRANSLATION_XLSX", ROOT / "翻译库.xlsx"))
+_xlsx_env = os.getenv("TRANSLATION_XLSX", "")
+if _xlsx_env:
+    _xlsx_env_path = Path(_xlsx_env)
+    XLSX_PATH = _xlsx_env_path if _xlsx_env_path.is_absolute() else ROOT / _xlsx_env_path
+else:
+    # 兼容本地中文文件名；Vercel 打包 ASCII 文件名更稳，fallback 自动识别
+    XLSX_PATH = ROOT / "翻译库.xlsx" if (ROOT / "翻译库.xlsx").exists() else ROOT / "translation.xlsx"
 
 if os.getenv("VERCEL"):
     DATA_DIR = Path(os.getenv("DATA_DIR", "/tmp/data"))
