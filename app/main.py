@@ -44,21 +44,6 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="多语言翻译助手", lifespan=lifespan)
 
 
-@app.get("/api/debug/files")
-def debug_files():
-    import os
-    target = ROOT / "translation.xlsx"
-    return {
-        "root": str(ROOT),
-        "root_exists": ROOT.exists(),
-        "cwd": os.getcwd(),
-        "target": str(target),
-        "target_exists": target.exists(),
-        "target_size": target.stat().st_size if target.exists() else 0,
-        "root_files": [p.name for p in ROOT.iterdir() if p.is_file()][:50],
-    }
-
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
