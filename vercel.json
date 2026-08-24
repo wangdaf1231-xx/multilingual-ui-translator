@@ -1,7 +1,12 @@
 {
   "functions": {
+    "api/index.py": {
+      "maxDuration": 60,
+      "includeFiles": "翻译库.xlsx"
+    },
     "app/main.py": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "includeFiles": "翻译库.xlsx"
     }
   }
 }
