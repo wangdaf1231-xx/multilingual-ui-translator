@@ -5,6 +5,5 @@
 venv
 .git
 .pytest_cache
-*.xlsx
 data/*.db
 data/exports
