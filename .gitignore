@@ -6,7 +6,6 @@ __pycache__/
 .env.*
 !.env.example
 .vercel
-*.xlsx
 data/*.db
 data/*.db-*
 data/exports/
